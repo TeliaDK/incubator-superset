@@ -84,4 +84,4 @@ wtforms-json==0.3.3
 wtforms==2.2.1            # via flask-wtf, wtforms-json
 
 # Telia specifics
-pysnowflake==0.1.3        # Snowflake data connection
+snowflake-sqlalchemy==1.1.13        # Snowflake data connection

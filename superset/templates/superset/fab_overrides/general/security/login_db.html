@@ -1,0 +1,16 @@
+{% extends 'appbuilder/general/security/login_db.html' %}
+{% block content %}
+    {{super()}}
+    <div class="container">
+        <div class="foergotpwd mainbox col-md-6 col-md-offset-3 col-sm-8 col-sm-offset-2">
+            <div class="panel panel-primary">
+                <h2><a href="/forgotpassword/form">Forgot password</a></h2>
+            </div>
+        </div>
+    </div>
+    <style>
+        .foergotpwd{
+            text-align: center;
+        }
+    </style>
+{% endblock %}

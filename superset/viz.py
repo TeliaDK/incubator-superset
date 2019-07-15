@@ -710,20 +710,60 @@ class MarkupViz(BaseViz):
     verbose_name = _("Markup")
     is_timeseries = False
 
+    def should_be_timeseries(self):
+        fd = self.form_data
+        # TODO handle datasource-type-specific code in datasource
+        conditions_met = (fd.get("granularity") and fd.get("granularity") != "all") or (
+            fd.get("granularity_sqla") and fd.get("time_grain_sqla")
+        )
+        if fd.get("include_time") and not conditions_met:
+            raise Exception(
+                _("Pick a granularity in the Time section or " "uncheck 'Include Time'")
+            )
+        return fd.get("include_time")
+
     def query_obj(self):
-        return None
+        d = super().query_obj()
+        fd = self.form_data
 
-    def get_df(self, query_obj=None):
-        return None
+        if fd.get("all_columns") and (fd.get("groupby") or fd.get("metrics")):
+            raise Exception(
+                _(
+                    "Choose either fields to [Group By] and [Metrics] or "
+                    "[Columns], not both"
+                )
+            )
 
-    def get_code(self):
+        sort_by = fd.get("timeseries_limit_metric")
+        if fd.get("all_columns"):
+            d["columns"] = fd.get("all_columns")
+            d["groupby"] = []
+            order_by_cols = fd.get("order_by_cols") or []
+            d["orderby"] = [json.loads(t) for t in order_by_cols]
+        elif sort_by:
+            sort_by_label = utils.get_metric_name(sort_by)
+            if sort_by_label not in utils.get_metric_names(d["metrics"]):
+                d["metrics"] += [sort_by]
+            d["orderby"] = [(sort_by, not fd.get("order_desc", True))]
+
+        # Add all percent metrics that are not already in the list
+        if "percent_metrics" in fd:
+            d["metrics"] = d["metrics"] + list(
+                filter(lambda m: m not in d["metrics"], fd["percent_metrics"] or [])
+            )
+
+        d["is_timeseries"] = self.should_be_timeseries()
+        return d
+
+    def get_code(self, df):
         code = self.form_data.get("code", "")
         processor = get_template_processor(self.datasource.database)
-        return processor.process_template(code)
+        return processor.process_template(code, data=df.to_dict('r'))
 
     def get_data(self, df):
+        print("markup df:%s" % df)
         markup_type = self.form_data.get("markup_type")
-        code = self.get_code()
+        code = self.get_code(df)
         if markup_type == "markdown":
             code = markdown(code, extensions=['tables'])
         return dict(html=code, theme_css=get_css_manifest_files("theme"))

@@ -55,7 +55,7 @@ from superset.utils.core import (
     merge_extra_filters,
     to_adhoc,
 )
-
+from superset.jinja_context import get_template_processor
 
 config = app.config
 stats_logger = config.get("STATS_LOGGER")
@@ -716,13 +716,17 @@ class MarkupViz(BaseViz):
     def get_df(self, query_obj=None):
         return None
 
+    def get_code(self):
+        code = self.form_data.get("code", "")
+        processor = get_template_processor(self.datasource.database)
+        return processor.process_template(code)
+
     def get_data(self, df):
         markup_type = self.form_data.get("markup_type")
-        code = self.form_data.get("code", "")
+        code = self.get_code()
         if markup_type == "markdown":
-            code = markdown(code)
+            code = markdown(code, extensions=['tables'])
         return dict(html=code, theme_css=get_css_manifest_files("theme"))
-
 
 class SeparatorViz(MarkupViz):
 

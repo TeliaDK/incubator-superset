@@ -758,7 +758,10 @@ class MarkupViz(BaseViz):
     def get_code(self, df):
         code = self.form_data.get("code", "")
         processor = get_template_processor(self.datasource.database)
-        return processor.process_template(code, data=df.to_dict('r'))
+        return processor.process_template(code, 
+            data=df,
+            data_dict=lambda: json.dumps(df.to_dict('r')),
+            query=json.dumps(self.query_obj()))
 
     def get_data(self, df):
         print("markup df:%s" % df)

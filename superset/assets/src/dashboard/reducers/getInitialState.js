@@ -97,7 +97,7 @@ export default function(bootstrapData) {
   const sliceIds = new Set();
   dashboard.slices.forEach(slice => {
     const key = slice.slice_id;
-    if (['separator', 'markup'].indexOf(slice.form_data.viz_type) === -1) {
+    if (['separator'].indexOf(slice.form_data.viz_type) === -1) {
       chartQueries[key] = {
         ...chart,
         id: key,

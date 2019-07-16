@@ -63,7 +63,7 @@ export function fetchAllSlices(userId) {
                 datasource,
               };
             }
-            if (['markup', 'separator'].indexOf(slice.viz_type) === -1) {
+            if (['separator'].indexOf(slice.viz_type) === -1) {
               slices[slice.id] = {
                 slice_id: slice.id,
                 slice_url: slice.slice_url,

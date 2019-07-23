@@ -12,7 +12,7 @@ from flask_login.utils import logout_user
 from flask import redirect, flash, request, url_for, render_template, g
 from superset import appbuilder, db, cache, app
 from superset.utils.core import send_email_smtp
-import random, string
+import random, string, logging
 
 from flask_appbuilder.security.views import AuthDBView
 AuthDBView.login_template = "/superset/fab_overrides/general/security/login_db.html"
@@ -55,7 +55,7 @@ class ResetLinkManager():
         return db.session.query(User).filter_by(email=email, username=username).first()
 
     def send_link(self, form):
-        print("Sendf link")
+        logging.info("Sendf link")
         if form.password.data != form.conf_password.data:
             raise "Password does not match"
         user = self.find_user(form.username.data, form.email.data)
@@ -68,7 +68,7 @@ class ResetLinkManager():
             "url": "%s%s?code=%s" % (request.host_url[0:-1], url_for("ForgotPassword.activate"), code),
             "valid_user": user != None
         }
-        print("Send link data: %s" % data)
+        logging.info("Send link data: %s" % data)
         
         return data['valid_user'] and \
             self.store_link(data) and \
@@ -81,11 +81,11 @@ class ResetLinkManager():
         key = self.get_cache_key(data['code'])
         try:
             cache.set(key, data, timeout=60*60)
-            print("Link key stored")
+            logging.info("Link key stored")
             return True
         except Exception as ex:
-            print("Error storing link key")
-            print(ex)
+            logging.info("Error storing link key")
+            logging.info(ex)
         return False
 
     def build_email_body(self, data):
@@ -103,10 +103,10 @@ class ResetLinkManager():
                 self.build_email_body(data),
                 app.config
             )
-            print("Email send by smtp lib: %s" % res)
+            logging.info("Email send by smtp lib: %s" % res)
         except Exception as ex:
-            print("Error sending email by smtp")
-            print(ex)
+            logging.info("Error sending email by smtp")
+            logging.info(ex)
             raise ex
         return True
         
@@ -120,12 +120,12 @@ class ResetLinkManager():
     def activate(self):
         code = request.args.get('code')
         data = self.get_code_info(code)
-        print("**** Data: %s" % data)
+        logging.info("**** Data: %s" % data)
         return data and self.update_pwd(data)
 
     def update_pwd(self, data):
         user = self.find_user(data['username'], data['email'])
-        print("Setting password for user: %s - %s", (user.id, data['pwd']))
+        logging.info("Setting password for user: %s - %s", (user.id, data['pwd']))
         appbuilder.sm.reset_password(user.id, data['pwd'])
         return True
 
@@ -156,9 +156,9 @@ class ForgotPassword(PublicFormView):
     @expose("/send_link", methods=["GET"])
     def send_link(self):
         form = ForgotPasswordForm(request.args, meta={'csrf': False})
-        print("Form data: %s" % [form.username.data, form.email.data, form.password.data, form.conf_password.data])
+        logging.info("Form data: %s" % [form.username.data, form.email.data, form.password.data, form.conf_password.data])
         if form.validate():
-            print("Form is valid")
+            logging.info("Form is valid")
             self.form_post(form)
         return redirect("/")
 

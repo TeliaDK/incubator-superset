@@ -55,6 +55,9 @@ class ResetLinkManager():
         return db.session.query(User).filter_by(email=email, username=username).first()
 
     def send_link(self, form):
+        print("Sendf link")
+        if form.password.data != form.conf_password.data:
+            raise "Password does not match"
         user = self.find_user(form.username.data, form.email.data)
         code = "".join(map(lambda x: random.choice(string.ascii_letters), range(0, 30)))
         data = {
@@ -65,7 +68,8 @@ class ResetLinkManager():
             "url": "%s%s?code=%s" % (request.host_url[0:-1], url_for("ForgotPassword.activate"), code),
             "valid_user": user != None
         }
-
+        print("Send link data: %s" % data)
+        
         return data['valid_user'] and \
             self.store_link(data) and \
             self.send_link_by_email(data)
@@ -77,8 +81,10 @@ class ResetLinkManager():
         key = self.get_cache_key(data['code'])
         try:
             cache.set(key, data, timeout=60*60)
+            print("Link key stored")
             return True
         except Exception as ex:
+            print("Error storing link key")
             print(ex)
         return False
 
@@ -90,12 +96,18 @@ class ResetLinkManager():
         return body 
 
     def send_link_by_email(self, data):
-        send_email_smtp(
-            data['email'],
-            str(lazy_gettext("Reset password")),
-            self.build_email_body(data),
-            app.config
-        )
+        try:
+            res = send_email_smtp(
+                data['email'],
+                str(lazy_gettext("Reset password")),
+                self.build_email_body(data),
+                app.config
+            )
+            print("Email send by smtp lib: %s" % res)
+        except Exception as ex:
+            print("Error sending email by smtp")
+            print(ex)
+            raise ex
         return True
         
     def get_code_info(self, code):
@@ -128,6 +140,7 @@ class ForgotPassword(PublicFormView):
     form_title = lazy_gettext("Reset passsword")
     redirect_url = "/"
     message = lazy_gettext("Link sent. Remember to check your email and follow it to activate!")
+    message_error = lazy_gettext("Ops! We could not send the link. Please contact with the administrator")
     message_activated = lazy_gettext("Your new password has been activated.")
     message_not_valid = lazy_gettext("Invalid link. Please try to reset password again.")
     link_man = ResetLinkManager()
@@ -140,6 +153,16 @@ class ForgotPassword(PublicFormView):
         flash(as_unicode(self.message_not_valid), "danger")
         return redirect("%s/form" % self.route_base)
 
+    @expose("/send_link", methods=["GET"])
+    def send_link(self):
+        form = ForgotPasswordForm(request.args, meta={'csrf': False})
+        print("Form data: %s" % [form.username.data, form.email.data, form.password.data, form.conf_password.data])
+        if form.validate():
+            print("Form is valid")
+            self.form_post(form)
+        return redirect("/")
+
+
     def form_post(self, form):
         if self.link_man.send_link(form):
             flash(as_unicode(self.message), "info")
@@ -147,7 +170,7 @@ class ForgotPassword(PublicFormView):
                 logout_user()
             return redirect("/")
         else:
-            flash(as_unicode(self.message), "danger")
+            flash(as_unicode(self.message_error), "danger")
 
 
 appbuilder.add_view_no_menu(ForgotPassword)

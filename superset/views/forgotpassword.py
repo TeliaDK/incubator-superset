@@ -7,23 +7,21 @@ from flask_appbuilder.forms import DynamicForm
 from flask_appbuilder.views import expose, PublicFormView
 from flask_appbuilder._compat import as_unicode
 from flask_appbuilder.security.sqla.models import User
-from flask_login.utils import logout_user
+from flask_appbuilder.urltools import Stack
 
-from flask import redirect, flash, request, url_for, render_template, g
+from flask_login.utils import logout_user, login_user
+
+from flask import redirect, flash, request, url_for, render_template, g, session
 from superset import appbuilder, db, cache, app
 from superset.utils.core import send_email_smtp
-import random, string, logging
+import random, string, logging, time
+
+from cryptography.fernet import Fernet
 
 from flask_appbuilder.security.views import AuthDBView
 AuthDBView.login_template = "/superset/fab_overrides/general/security/login_db.html"
 
 class ForgotPasswordForm(DynamicForm):
-    username = StringField(
-        lazy_gettext("Username"),
-        validators=[DataRequired()],
-        widget=BS3TextFieldWidget(),
-        description=""
-    )
     email = StringField(
         lazy_gettext("Email"),
         validators=[DataRequired(), Email()],
@@ -33,60 +31,47 @@ class ForgotPasswordForm(DynamicForm):
             " Link will expire in 1 hour"
         )
     )
-    password = PasswordField(
-        lazy_gettext("Password"),
-        description=lazy_gettext(
-            "Please use a good password policy,"
-            " this application does not check this for you"
-        ),
-        validators=[DataRequired()],
-        widget=BS3PasswordFieldWidget(),
-    )
-    conf_password = PasswordField(
-        lazy_gettext("Confirm Password"),
-        description=lazy_gettext("Please rewrite the password to confirm"),
-        validators=[DataRequired(), EqualTo("password", message=lazy_gettext("Passwords must match"))],
-        widget=BS3PasswordFieldWidget(),
-    )
 
 
 class ResetLinkManager():
-    def find_user(self, username, email):
-        return db.session.query(User).filter_by(email=email, username=username).first()
+    SEPARATOR = "@@@@"
+    LINK_TIME_TO_LIVE = (60 * 60)
+
+    def find_user(self, email):
+        return db.session.query(User).filter_by(email=email).first()
 
     def send_link(self, form):
-        logging.info("Sendf link")
-        if form.password.data != form.conf_password.data:
-            raise "Password does not match"
-        user = self.find_user(form.username.data, form.email.data)
-        code = "".join(map(lambda x: random.choice(string.ascii_letters), range(0, 30)))
+        logging.info("Send link")
+        user = self.find_user(form.email.data)
+        if user is None:
+            return False
+
+        code = self.generateCode(user)
         data = {
+            "username": user.username,
             "email": form.email.data,
-            "pwd": form.password.data,
-            "username": form.username.data,
             "code": code,
-            "url": "%s%s?code=%s" % (request.host_url[0:-1], url_for("ForgotPassword.activate"), code),
-            "valid_user": user != None
+            "url": "%s%s?code=%s" % (request.host_url[0:-1], url_for("ForgotPassword.activate"), code)
         }
         logging.info("Send link data: %s" % data)
-        
-        return data['valid_user'] and \
-            self.store_link(data) and \
-            self.send_link_by_email(data)
-    
-    def get_cache_key(self, code):
-        return "reset_password_%s" % code
 
-    def store_link(self, data):
-        key = self.get_cache_key(data['code'])
-        try:
-            cache.set(key, data, timeout=60*60)
-            logging.info("Link key stored")
-            return True
-        except Exception as ex:
-            logging.info("Error storing link key")
-            logging.info(ex)
-        return False
+        return self.send_link_by_email(data)
+
+    def getEncryptKey(self):
+        key = app.config.get("SECURITY_FERNET_KEY")
+        logging.info("SECURITY_FERNET_KEY: %s" % key)
+        return key.encode()
+
+    def encrypt(self, message: string) -> string:
+        key = self.getEncryptKey()
+        return Fernet(key).encrypt(message.encode()).decode()
+
+    def decrypt(self, token: string) -> string:
+        key = self.getEncryptKey()
+        return Fernet(key).decrypt(token.encode(), ttl=self.LINK_TIME_TO_LIVE).decode()
+
+    def generateCode(self, user):
+        return self.encrypt(user.email)
 
     def build_email_body(self, data):
         body = render_template(
@@ -109,24 +94,22 @@ class ResetLinkManager():
             logging.info(ex)
             raise ex
         return True
-        
-    def get_code_info(self, code):
-        key = self.get_cache_key(code)
-        data = cache.get(key)
-        if data:
-            cache.delete(key)
-        return data
+
+    def getUserFromCode(self, linkCode):
+        email = self.decrypt(linkCode)
+        user = self.find_user(email)
+        return user
 
     def activate(self):
-        code = request.args.get('code')
-        data = self.get_code_info(code)
-        logging.info("**** Data: %s" % data)
-        return data and self.update_pwd(data)
+        linkCode = request.args.get('code')
+        user = self.getUserFromCode(linkCode)
+        logging.info("**** Data: %s" % user)
+        return user and self.update_pwd(user)
 
-    def update_pwd(self, data):
-        user = self.find_user(data['username'], data['email'])
-        logging.info("Setting password for user: %s - %s", (user.id, data['pwd']))
-        appbuilder.sm.reset_password(user.id, data['pwd'])
+    def update_pwd(self, user):
+        logging.info("Setting dummy password for user: %s", user.id)
+        appbuilder.sm.reset_password(user.id, "JustADummyPassword!")
+        login_user(user)
         return True
 
 
@@ -149,9 +132,12 @@ class ForgotPassword(PublicFormView):
     def activate(self):
         if self.link_man.activate():
             flash(as_unicode(self.message_activated), "info")
-            return redirect("/login/")
+            # next= parameter is ignored
+            page_history = Stack(session.get("page_history", []))
+            page_history.push("/") # Will force a redirect to home page
+            return redirect("/resetmypassword/form")
         flash(as_unicode(self.message_not_valid), "danger")
-        return redirect("%s/form" % self.route_base)
+        return redirect("/")
 
     @expose("/send_link", methods=["GET"])
     def send_link(self):

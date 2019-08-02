@@ -32,6 +32,7 @@ from dateutil import tz
 from flask_appbuilder.security.manager import AUTH_DB
 
 from superset.stats_logger import DummyStatsLogger
+from cryptography.fernet import Fernet
 
 # Realtime stats logger, a StatsD implementation exists
 STATS_LOGGER = DummyStatsLogger()
@@ -618,6 +619,9 @@ TALISMAN_CONFIG = {
     "force_https": True,
     "force_https_permanent": False,
 }
+
+# ForgotPassword Fernet KEY as string. Overwrite when running clustered installations
+SECURITY_FERNET_KEY = Fernet.generate_key().decode()
 
 try:
     if CONFIG_PATH_ENV_VAR in os.environ:

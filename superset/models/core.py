@@ -166,6 +166,7 @@ class Slice(Model, AuditMixinNullable, ImportMixin):
     cache_timeout = Column(Integer)
     perm = Column(String(1000))
     owners = relationship(security_manager.user_model, secondary=slice_user)
+    tags = Column(String(2000))
 
     export_fields = (
         "slice_name",
@@ -174,6 +175,7 @@ class Slice(Model, AuditMixinNullable, ImportMixin):
         "viz_type",
         "params",
         "cache_timeout",
+        "tags"
     )
 
     def __repr__(self):
@@ -197,6 +199,7 @@ class Slice(Model, AuditMixinNullable, ImportMixin):
             params=self.params,
             description=self.description,
             cache_timeout=self.cache_timeout,
+            tags=self.tags,
         )
 
     @datasource.getter  # type: ignore
@@ -256,6 +259,7 @@ class Slice(Model, AuditMixinNullable, ImportMixin):
             "modified": self.modified(),
             "changed_on_humanized": self.changed_on_humanized,
             "changed_on": self.changed_on.isoformat(),
+            "tags": self.tags,
         }
 
     @property

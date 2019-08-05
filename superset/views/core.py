@@ -301,15 +301,17 @@ class SliceModelView(SupersetModelView, DeleteMixin):  # noqa
     search_columns = (
         "slice_name",
         "description",
+        "tags",
         "viz_type",
         "datasource_name",
         "owners",
     )
-    list_columns = ["slice_link", "viz_type", "datasource_link", "creator", "modified"]
+    list_columns = ["slice_link", "viz_type", "datasource_link", "tags", "creator", "modified"]
     order_columns = ["viz_type", "datasource_link", "modified"]
     edit_columns = [
         "slice_name",
         "description",
+        "tags",
         "viz_type",
         "owners",
         "dashboards",
@@ -334,6 +336,11 @@ class SliceModelView(SupersetModelView, DeleteMixin):  # noqa
             "Duration (in seconds) of the caching timeout for this chart. "
             "Note this defaults to the datasource/table timeout if undefined."
         ),
+        "tags": _(
+            "Comma separated tags. "
+            "Tags will be used to classify and search for charts. "
+            "Example: data, table, custom-viz, echarts, billing"
+        ),
     }
     base_filters = [["id", SliceFilter, lambda: []]]
     label_columns = {
@@ -349,6 +356,7 @@ class SliceModelView(SupersetModelView, DeleteMixin):  # noqa
         "slice_name": _("Name"),
         "table": _("Table"),
         "viz_type": _("Visualization Type"),
+        "tags": _("Tags"),
     }
 
     add_form_query_rel_fields = {"dashboards": [["name", DashboardFilter, None]]}

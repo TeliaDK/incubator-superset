@@ -44,7 +44,7 @@ class Annotation(Model, AuditMixinNullable):
     id = Column(Integer, primary_key=True)
     start_dttm = Column(DateTime)
     end_dttm = Column(DateTime)
-    layer_id = Column(Integer, ForeignKey("annotation_layer.id"), nullable=False)
+    layer_id = Column(Integer, ForeignKey("annotation_layer.id"), nullable=True)
     short_descr = Column(String(500))
     long_descr = Column(Text)
     layer = relationship(AnnotationLayer, backref="annotation")

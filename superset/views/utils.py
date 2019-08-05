@@ -16,15 +16,15 @@
 # under the License.
 # pylint: disable=C,R,W
 from collections import defaultdict
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional, Tuple
 from urllib import parse
 
-from flask import g, request
-from flask_appbuilder.security.sqla import models as ab_models
+from flask import request
 import simplejson as json
 
 from superset import app, db, viz
 from superset.connectors.connector_registry import ConnectorRegistry
+from superset.exceptions import SupersetException
 from superset.legacy import update_time_range
 import superset.models.core as models
 from superset.utils.core import QueryStatus
@@ -35,12 +35,7 @@ if not app.config.get("ENABLE_JAVASCRIPT_CONTROLS"):
     FORM_DATA_KEY_BLACKLIST = ["js_tooltip", "js_onclick_href", "js_data_mutator"]
 
 
-def bootstrap_user_data(username=None, include_perms=False):
-    if not username:
-        username = g.user.username
-
-    user = db.session.query(ab_models.User).filter_by(username=username).one()
-
+def bootstrap_user_data(user, include_perms=False):
     payload = {
         "username": user.username,
         "firstName": user.first_name,
@@ -144,20 +139,39 @@ def get_form_data(slice_id=None, use_slice_data=False):
     return form_data, slc
 
 
-def get_datasource_info(datasource_id, datasource_type, form_data):
-    """Compatibility layer for handling of datasource info
+def get_datasource_info(
+    datasource_id: Optional[int],
+    datasource_type: Optional[str],
+    form_data: Dict[str, Any],
+) -> Tuple[int, Optional[str]]:
+    """
+    Compatibility layer for handling of datasource info
 
     datasource_id & datasource_type used to be passed in the URL
     directory, now they should come as part of the form_data,
-    This function allows supporting both without duplicating code"""
+
+    This function allows supporting both without duplicating code
+
+    :param datasource_id: The datasource ID
+    :param datasource_type: The datasource type, i.e., 'druid' or 'table'
+    :param form_data: The URL form data
+    :returns: The datasource ID and type
+    :raises SupersetException: If the datasource no longer exists
+    """
+
     datasource = form_data.get("datasource", "")
+
     if "__" in datasource:
         datasource_id, datasource_type = datasource.split("__")
         # The case where the datasource has been deleted
-        datasource_id = None if datasource_id == "None" else datasource_id
+        if datasource_id == "None":
+            datasource_id = None
 
     if not datasource_id:
-        raise Exception("The datasource associated with this chart no longer exists")
+        raise SupersetException(
+            "The datasource associated with this chart no longer exists"
+        )
+
     datasource_id = int(datasource_id)
     return datasource_id, datasource_type
 

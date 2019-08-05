@@ -531,10 +531,9 @@ export function createDatasource(vizOptions) {
       postPayload: { data: vizOptions },
     })
       .then(({ json }) => {
-        const data = JSON.parse(json);
-        dispatch(createDatasourceSuccess(data));
+        dispatch(createDatasourceSuccess(json));
 
-        return Promise.resolve(data);
+        return Promise.resolve(json);
       })
       .catch(() => {
         dispatch(createDatasourceFailed(t('An error occurred while creating the data source')));

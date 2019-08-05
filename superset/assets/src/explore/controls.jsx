@@ -69,6 +69,7 @@ import * as v from './validators';
 import { defaultViewport } from '../modules/geo';
 import ColumnOption from '../components/ColumnOption';
 import OptionDescription from '../components/OptionDescription';
+import { EChartsTemplates } from './constants';
 
 const categoricalSchemeRegistry = getCategoricalSchemeRegistry();
 const sequentialSchemeRegistry = getSequentialSchemeRegistry();
@@ -171,6 +172,7 @@ const metric = {
   ...metrics,
   multi: false,
   label: t('Metric'),
+  description: t('Metric'),
   default: props => mainMetric(props.savedMetrics),
 };
 
@@ -471,6 +473,13 @@ export const controls = {
     description: t('Display total row/column'),
   },
 
+  transpose_pivot: {
+    type: 'CheckboxControl',
+    label: t('Transpose Pivot'),
+    default: false,
+    description: t('Swap Groups and Columns'),
+  },
+
   show_markers: {
     type: 'CheckboxControl',
     label: t('Show Markers'),
@@ -552,6 +561,7 @@ export const controls = {
       'Egypt',
       'France',
       'Germany',
+      'India',
       'Italy',
       'Japan',
       'Morocco',
@@ -925,26 +935,17 @@ export const controls = {
     freeForm: true,
     label: t('Rule'),
     default: null,
-    choices: formatSelectOptions(['', '1T', '1H', '1D', '7D', '1M', '1AS']),
+    choices: formatSelectOptions(['1T', '1H', '1D', '7D', '1M', '1AS']),
     description: t('Pandas resample rule'),
   },
 
-  resample_how: {
+  resample_method: {
     type: 'SelectControl',
     freeForm: true,
-    label: t('How'),
+    label: t('Method'),
     default: null,
-    choices: formatSelectOptions(['', 'mean', 'sum', 'median']),
-    description: t('Pandas resample how'),
-  },
-
-  resample_fillmethod: {
-    type: 'SelectControl',
-    freeForm: true,
-    label: t('Fill Method'),
-    default: null,
-    choices: formatSelectOptions(['', 'ffill', 'bfill']),
-    description: t('Pandas resample fill method'),
+    choices: formatSelectOptions(['asfreq', 'bfill', 'ffill', 'median', 'mean', 'sum']),
+    description: t('Pandas resample method'),
   },
 
   time_range: {
@@ -1342,6 +1343,30 @@ export const controls = {
       language: state.controls && state.controls.markup_type ? state.controls.markup_type.value : 'markdown',
     }),
     default: '',
+  },
+
+  echarts_options: {
+    type: 'TextAreaControl',
+    label: t('ECharts optiosn'),
+    description: t('Advanced options setup'),
+    mapStateToProps: state => ({
+      language: 'javascript',
+    }),
+    default: "/** Use $data to access dimensions and metrics\n"+
+            " * More info: console.log($data); :) */\n"+
+            "var options = " + JSON.stringify(EChartsTemplates["Line Chart"], null, 2) + ";\nreturn options;",
+  },
+
+  echart_options_editor:{
+    type: 'EChartsOptionsEditorControl',
+    label: t('ECharts options: https://echarts.apache.org/en/option.html'),
+    description: t('ECharts options. You can access data through variable "data"'),
+    mapStateToProps: state => ({
+      controls: state.controls,
+      form_state: state
+    }),
+    default: '',
+    renderTrigger: true
   },
 
   pandas_aggfunc: {

@@ -31,7 +31,6 @@ import logging
 import math
 import pickle as pkl
 import re
-import traceback
 import uuid
 
 from dateutil import relativedelta as rdelta
@@ -43,6 +42,7 @@ from markdown import markdown
 import numpy as np
 import pandas as pd
 from pandas.tseries.frequencies import to_offset
+from pandas.tseries.offsets import DateOffset
 import polyline
 import simplejson as json
 
@@ -321,8 +321,6 @@ class BaseViz(object):
             "extras": extras,
             "timeseries_limit_metric": timeseries_limit_metric,
             "order_desc": order_desc,
-            "prequeries": [],
-            "is_prequery": False,
         }
         return d
 
@@ -365,6 +363,7 @@ class BaseViz(object):
 
         cache_dict["time_range"] = self.form_data.get("time_range")
         cache_dict["datasource"] = self.datasource.uid
+        cache_dict["extra_cache_keys"] = self.datasource.get_extra_cache_keys(query_obj)
         json_data = self.json_dumps(cache_dict, sort_keys=True)
         return hashlib.md5(json_data.encode("utf-8")).hexdigest()
 
@@ -423,7 +422,7 @@ class BaseViz(object):
                 if not self.error_message:
                     self.error_message = "{}".format(e)
                 self.status = utils.QueryStatus.FAILED
-                stacktrace = traceback.format_exc()
+                stacktrace = utils.get_stacktrace()
 
             if (
                 is_loaded
@@ -657,12 +656,22 @@ class PivotTableViz(BaseViz):
         groupby = self.form_data.get("groupby")
         columns = self.form_data.get("columns")
         metrics = self.form_data.get("metrics")
+        transpose = self.form_data.get("transpose_pivot")
         if not columns:
             columns = []
         if not groupby:
             groupby = []
         if not groupby:
             raise Exception(_("Please choose at least one 'Group by' field "))
+        if transpose and not columns:
+            raise Exception(
+                _(
+                    (
+                        "Please choose at least one 'Columns' field when "
+                        "select 'Transpose Pivot' option"
+                    )
+                )
+            )
         if not metrics:
             raise Exception(_("Please choose at least one metric"))
         if any(v in groupby for v in columns) or any(v in columns for v in groupby):
@@ -673,15 +682,19 @@ class PivotTableViz(BaseViz):
         if self.form_data.get("granularity") == "all" and DTTM_ALIAS in df:
             del df[DTTM_ALIAS]
 
-        aggfunc = self.form_data.get("pandas_aggfunc")
+        aggfunc = self.form_data.get("pandas_aggfunc") or "sum"
 
         # Ensure that Pandas's sum function mimics that of SQL.
         if aggfunc == "sum":
             aggfunc = lambda x: x.sum(min_count=1)  # noqa: E731
 
+        groupby = self.form_data.get("groupby")
+        columns = self.form_data.get("columns")
+        if self.form_data.get("transpose_pivot"):
+            groupby, columns = columns, groupby
         df = df.pivot_table(
-            index=self.form_data.get("groupby"),
-            columns=self.form_data.get("columns"),
+            index=groupby,
+            columns=columns,
             values=[utils.get_metric_name(m) for m in self.form_data.get("metrics")],
             aggfunc=aggfunc,
             margins=self.form_data.get("pivot_margins"),
@@ -1129,14 +1142,7 @@ class NVD3TimeSeriesViz(NVD3Viz):
         if fd.get("granularity") == "all":
             raise Exception(_("Pick a time granularity for your time series"))
 
-        if not aggregate:
-            df = df.pivot_table(
-                index=DTTM_ALIAS,
-                columns=fd.get("groupby"),
-                values=self.metric_labels,
-                dropna=False,
-            )
-        else:
+        if aggregate:
             df = df.pivot_table(
                 index=DTTM_ALIAS,
                 columns=fd.get("groupby"),
@@ -1145,14 +1151,19 @@ class NVD3TimeSeriesViz(NVD3Viz):
                 aggfunc=sum,
                 dropna=False,
             )
+        else:
+            df = df.pivot_table(
+                index=DTTM_ALIAS,
+                columns=fd.get("groupby"),
+                values=self.metric_labels,
+                dropna=False,
+            )
 
-        fm = fd.get("resample_fillmethod")
-        if not fm:
-            fm = None
-        how = fd.get("resample_how")
         rule = fd.get("resample_rule")
-        if how and rule:
-            df = df.resample(rule, how=how, fill_method=fm)
+        method = fd.get("resample_method")
+
+        if rule and method:
+            df = getattr(df.resample(rule), method)()
 
         if self.sort_series:
             dfs = df.sum()
@@ -1388,7 +1399,8 @@ class NVD3TimePivotViz(NVD3TimeSeriesViz):
         fd = self.form_data
         df = self.process_data(df)
         freq = to_offset(fd.get("freq"))
-        freq.normalize = True
+        freq = DateOffset(normalize=True, **freq.kwds)
+        df.index.name = None
         df[DTTM_ALIAS] = df.index.map(freq.rollback)
         df["ranked"] = df[DTTM_ALIAS].rank(method="dense", ascending=False) - 1
         df.ranked = df.ranked.map(int)
@@ -1735,7 +1747,7 @@ class WorldMapViz(BaseViz):
         return qry
 
     def get_data(self, df):
-        from superset.data import countries
+        from superset.examples import countries
 
         fd = self.form_data
         cols = [fd.get("entity")]
@@ -2415,7 +2427,7 @@ class DeckPolygon(DeckPathViz):
         fd = self.form_data
         elevation = fd["point_radius_fixed"]["value"]
         type_ = fd["point_radius_fixed"]["type"]
-        d["elevation"] = d.get(elevation) if type_ == "metric" else elevation
+        d["elevation"] = d.get(elevation["label"]) if type_ == "metric" else elevation
         return d
 
 
@@ -2747,6 +2759,14 @@ class PartitionViz(NVD3TimeSeriesViz):
         else:
             levels = self.levels_for("agg_sum", [DTTM_ALIAS] + groups, df)
         return self.nest_values(levels)
+
+
+class EchartsBasicViz(TableViz):
+
+    """Basic ECharts visualization"""
+
+    viz_type = "echarts_basic"
+    verbose_name = _("ECharts basic")
 
 
 viz_types = {

@@ -42,6 +42,7 @@ from markdown import markdown
 import numpy as np
 import pandas as pd
 from pandas.tseries.frequencies import to_offset
+from pandas.tseries.offsets import DateOffset
 import polyline
 import simplejson as json
 
@@ -1398,7 +1399,8 @@ class NVD3TimePivotViz(NVD3TimeSeriesViz):
         fd = self.form_data
         df = self.process_data(df)
         freq = to_offset(fd.get("freq"))
-        freq.normalize = True
+        freq = DateOffset(normalize=True, **freq.kwds)
+        df.index.name = None
         df[DTTM_ALIAS] = df.index.map(freq.rollback)
         df["ranked"] = df[DTTM_ALIAS].rank(method="dense", ascending=False) - 1
         df.ranked = df.ranked.map(int)
@@ -2757,6 +2759,14 @@ class PartitionViz(NVD3TimeSeriesViz):
         else:
             levels = self.levels_for("agg_sum", [DTTM_ALIAS] + groups, df)
         return self.nest_values(levels)
+
+
+class EchartsBasicViz(TableViz):
+
+    """Basic ECharts visualization"""
+
+    viz_type = "echarts_basic"
+    verbose_name = _("ECharts basic")
 
 
 viz_types = {

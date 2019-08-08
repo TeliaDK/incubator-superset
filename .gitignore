@@ -84,3 +84,4 @@ apache-superset-*.tar.gz*
 
 # Translation binaries
 messages.mo
+contrib/docker/development.sh

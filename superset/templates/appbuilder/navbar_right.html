@@ -25,19 +25,19 @@
 {% endif %}
 
 {% if not current_user.is_anonymous %}
-    <li class="dropdown">
+    <li class="dropdown addnew">
         <button type="button" style="margin-top: 12px; margin-right: 30px;" data-toggle="dropdown" class="dropdown-toggle btn btn-sm btn-primary">
           <i class="fa fa-plus"></i> {{ _("New") }}
         </button>
         <ul class="dropdown-menu">
-            <li><a href="/superset/sqllab"><span class="fa fa-fw fa-search"></span> {{_("SQL Query")}}</a></li>
-            <li><a href="/chart/add"><span class="fa fa-fw fa-bar-chart"></span> {{_("Chart")}}</a></li>
-            <li><a href="/dashboard/new/"><span class="fa fa-fw fa-dashboard"></span> {{_("Dashboard")}}</a></li>
+            <li class="sqllab"><a href="/superset/sqllab"><span class="fa fa-fw fa-search"></span> {{_("SQL Query")}}</a></li>
+            <li class="chart"><a href="/chart/add"><span class="fa fa-fw fa-bar-chart"></span> {{_("Chart")}}</a></li>
+            <li class="dashboard"><a href="/dashboard/new/"><span class="fa fa-fw fa-dashboard"></span> {{_("Dashboard")}}</a></li>
         </ul>
     </li>
 {% endif %}
 {% if documentation_url %}
-<li>
+<li class="documentation">
   <a
     tabindex="-1"
     href="{{ documentation_url }}"
@@ -48,7 +48,7 @@
 </li>
 {% endif %}
 {% if bug_report_url %}
-<li>
+<li class="bugreport">
   <a
     tabindex="-1"
     href="{{ bug_report_url }}"
@@ -59,7 +59,7 @@
 </li>
 {% endif %}
 {% if languages.keys()|length > 1 %}
-<li class="dropdown">
+<li class="dropdown languages">
     <a class="dropdown-toggle" data-toggle="dropdown" href="javascript:void(0)">
        <div class="f16"><i class="flag {{languages[locale].get('flag')}}"></i>&nbsp;<b class="caret"></b>
        </div>
@@ -81,7 +81,7 @@
 {% endif %}
 
 {% if not current_user.is_anonymous %}
-    <li class="dropdown">
+    <li class="dropdown profile">
       <a
         class="dropdown-toggle"
         data-toggle="dropdown"
@@ -90,12 +90,14 @@
       >
         <i class="fa fa-user"></i>&nbsp;<b class="caret"></b>
       </a>
-        <ul class="dropdown-menu">
-            <li><a href="{{appbuilder.get_url_for_userinfo}}"><span class="fa fa-fw fa-user"></span>{{_("Profile")}}</a></li>
-            <li><a href="{{appbuilder.get_url_for_logout}}"><span class="fa fa-fw fa-sign-out"></span>{{_("Logout")}}</a></li>
-        </ul>
+      <ul class="dropdown-menu">
+          <li class="userinfo"><a href="{{appbuilder.get_url_for_userinfo}}"><span class="fa fa-fw fa-user"></span>{{_("Profile")}}</a></li>
+          <li class="logout"><a href="{{appbuilder.get_url_for_logout}}"><span class="fa fa-fw fa-sign-out"></span>{{_("Logout")}}</a></li>
+      </ul>
     </li>
 {% else %}
-    <li><a href="{{appbuilder.get_url_for_login}}">
-    <i class="fa fa-fw fa-sign-in"></i>{{_("Login")}}</a></li>
+    <li class="login anonymous">
+      <a href="{{appbuilder.get_url_for_login}}">
+      <i class="fa fa-fw fa-sign-in"></i>{{_("Login")}}</a>
+    </li>
 {% endif %}

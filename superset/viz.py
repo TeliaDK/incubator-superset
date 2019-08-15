@@ -691,6 +691,11 @@ class PivotTableViz(BaseViz):
         columns = self.form_data.get("columns")
         if self.form_data.get("transpose_pivot"):
             groupby, columns = columns, groupby
+        
+        fill_value = self.form_data.get("fill_value")
+        if fill_value is "":
+            fill_value = np.NaN
+        
         df = df.pivot_table(
             index=groupby,
             columns=columns,
@@ -698,6 +703,7 @@ class PivotTableViz(BaseViz):
             aggfunc=aggfunc,
             margins=self.form_data.get("pivot_margins"),
             dropna=False,
+            fill_value=fill_value,
         )
         # Display metrics side by side with each column
         if self.form_data.get("combine_metric"):

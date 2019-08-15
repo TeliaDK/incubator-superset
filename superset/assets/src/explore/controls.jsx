@@ -2441,5 +2441,14 @@ export const controls = {
     description: t('Whether to normalize the histogram'),
     default: false,
   },
+
+  fill_value: {
+    type: 'TextControl',
+    label: t('Fill value'),
+    renderTrigger: false,
+    isFloat: true,
+    default: 0,
+    description: t('Default fill value for NaN entries on the pivot table. Emty for NaN'),
+  },
 };
 export default controls;

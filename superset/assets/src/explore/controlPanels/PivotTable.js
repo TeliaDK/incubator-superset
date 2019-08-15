@@ -37,6 +37,7 @@ export default {
         ['pandas_aggfunc', 'pivot_margins'],
         ['number_format', 'combine_metric'],
         ['transpose_pivot'],
+        ['fill_value'],
       ],
     },
   ],

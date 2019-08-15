@@ -28,7 +28,7 @@ def translate_bootstrap_data(json_data):
         path = selector.split(".")
         _key = path[-1]
         for d in query(path[0:-1], data):
-            d[_key] = str(_("%s-TRANS" % d[_key]))
+            d[_key] = str(_(d[_key]))
     
     data_dict = json.loads(json_data)
     paths = app.config.get("TRANSLATE_DASHBOARDS_PROPS", [])

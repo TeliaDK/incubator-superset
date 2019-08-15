@@ -624,6 +624,19 @@ TALISMAN_CONFIG = {
 # SQLALCHEMY_DATABASE_URI by default if set to `None`
 SQLALCHEMY_EXAMPLES_URI = None
 
+# Translate dashboards
+TRANSLATE_DASHBOARDS = False
+
+# Translate dashboard charts props
+TRANSLATE_DASHBOARDS_PROPS = [
+    # Dashboard info
+    #'dashboard_data.dashboard_title',
+    # Slices
+    #'dashboard_data.slices.*.slice_name',
+    # Big numbers
+    #"dashboard_data.slices.*.form_data.subheader",
+]
+
 if CONFIG_PATH_ENV_VAR in os.environ:
     # Explicitly import config module that is not necessarily in pythonpath; useful
     # for case where app is being executed via pex.

@@ -101,6 +101,8 @@ from .utils import (
     get_viz,
 )
 
+from superset.views.dashboard_utils import dump_bootstrap_data
+
 config = app.config
 CACHE_DEFAULT_TIMEOUT = config.get("CACHE_DEFAULT_TIMEOUT", 0)
 stats_logger = config.get("STATS_LOGGER")
@@ -2059,6 +2061,7 @@ class Superset(BaseSupersetView):
         dash = (
             session.query(Dashboard).filter(Dashboard.id == dashboard_id).one_or_none()
         )
+        print("DASBOARD: %s" % dash)
         admin_role = session.query(Role).filter(Role.name == "Admin").one_or_none()
 
         if request.method == "GET":
@@ -2138,7 +2141,7 @@ class Superset(BaseSupersetView):
             dash_edit_perm=dash_edit_perm,
             edit_mode=edit_mode,
         )
-
+        
         dashboard_data = dash.data
         dashboard_data.update(
             {
@@ -2150,7 +2153,7 @@ class Superset(BaseSupersetView):
                 "slice_can_edit": slice_can_edit,
             }
         )
-
+        
         bootstrap_data = {
             "user_id": g.user.get_id(),
             "dashboard_data": dashboard_data,
@@ -2162,12 +2165,14 @@ class Superset(BaseSupersetView):
         if request.args.get("json") == "true":
             return json_success(json.dumps(bootstrap_data))
 
+        translate_dashboard = config.get("TRANSLATE_DASHBOARDS", False)
+        
         return self.render_template(
             "superset/dashboard.html",
             entry="dashboard",
             standalone_mode=standalone_mode,
-            title=dash.dashboard_title,
-            bootstrap_data=json.dumps(bootstrap_data),
+            title=_(dash.dashboard_title) if translate_dashboard else dash.dashboard_title,
+            bootstrap_data=dump_bootstrap_data(bootstrap_data, translate_dashboard),
         )
 
     @api

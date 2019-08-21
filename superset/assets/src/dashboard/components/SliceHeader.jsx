@@ -98,16 +98,15 @@ class SliceHeader extends React.PureComponent {
       addDangerToast,
     } = this.props;
 
+    var sliceNameTranslated = editMode ? 
+                  sliceName || '---' // this makes an empty title clickable
+                  :t(sliceName);
+
     return (
       <div className="chart-header" ref={innerRef}>
         <div className="header">
           <EditableTitle
-            title={
-              sliceName ||
-              (editMode
-                ? '---' // this makes an empty title clickable
-                : '')
-            }
+            title={sliceNameTranslated}
             canEdit={editMode}
             emptyText=""
             onSaveTitle={updateSliceName}

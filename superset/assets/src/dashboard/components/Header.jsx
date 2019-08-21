@@ -287,12 +287,15 @@ class Header extends React.PureComponent {
     const userCanEdit = dashboardInfo.dash_edit_perm;
     const userCanSaveAs = dashboardInfo.dash_save_perm;
     const popButton = hasUnsavedChanges;
+    const dashboardTitleTranslated = editMode ? 
+                        dashboardTitle
+                        :t(dashboardTitle);
 
     return (
       <div className="dashboard-header">
         <div className="dashboard-component-header header-large">
           <EditableTitle
-            title={dashboardTitle}
+            title={dashboardTitleTranslated}
             canEdit={userCanEdit && editMode}
             onSaveTitle={this.handleChangeText}
             showTooltip={false}
